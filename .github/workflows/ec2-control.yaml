@@ -1,9 +1,6 @@
 name: EC2 Control
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       action:
@@ -45,20 +42,22 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # Terraform init (required for create/destroy)
       - name: Terraform Init
         if: ${{ github.event.inputs.action == 'create' || github.event.inputs.action == 'terminate' }}
         run: terraform init -reconfigure
 
-      - name: Create EC2 Instances
+      # Create EC2
+      - name: Terraform Apply
         if: ${{ github.event.inputs.action == 'create' }}
         run: terraform apply -auto-approve -var="instance_count=${{ github.event.inputs.instance_count }}"
 
+      # Stop EC2
       - name: Stop EC2 Instance
         if: ${{ github.event.inputs.action == 'stop' }}
-        run: |
-          INSTANCE_ID=${{ github.event.inputs.instance_id }}
-          aws ec2 stop-instances --instance-ids $INSTANCE_ID
+        run: aws ec2 stop-instances --instance-ids ${{ github.event.inputs.instance_id }}
 
+      # Terminate EC2
       - name: Terminate EC2 Instance
         if: ${{ github.event.inputs.action == 'terminate' }}
         run: terraform destroy -auto-approve
