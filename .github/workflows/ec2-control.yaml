@@ -4,23 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: 'Choose action'
+        description: "Action to perform: create | stop | terminate"
         required: true
-        type: choice
-        options:
-          - create
-          - stop
-          - terminate
+        default: "create"
       input_value:
-        description: 'Number of instances (create) or Instance ID (stop/terminate)'
+        description: "Number of instances (create) or Instance ID(s) (stop/terminate, comma separated)"
         required: false
 
 jobs:
-  ec2-control:
+  manage-ec2:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
@@ -29,6 +25,9 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Make script executable
+        run: chmod +x scripts/manage-ec2.sh
 
       - name: Run EC2 Management Script
         run: |

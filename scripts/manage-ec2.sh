@@ -1,59 +1,67 @@
 #!/bin/bash
-# Usage: ./manage-ec2.sh <action> [count_or_instance_id]
-# Example:
-# ./manage-ec2.sh create 2
-# ./manage-ec2.sh stop i-0123456789abcdef0
-# ./manage-ec2.sh terminate i-0123456789abcdef0
+
+# Usage: ./manage-ec2.sh <action> <value>
+# action = create | stop | terminate
+# value = number of instances (create) or instance-id (stop/terminate)
 
 ACTION=$1
-INPUT=$2
+VALUE=$2
 
-if [[ "$ACTION" == "create" ]]; then
-    if [[ -z "$INPUT" ]]; then
+echo "Action: $ACTION"
+echo "Input Value: $VALUE"
+
+# Function to list running EC2 instances
+list_running_instances() {
+    aws ec2 describe-instances \
+        --filters "Name=instance-state-name,Values=running" \
+        --query "Reservations[*].Instances[*].[InstanceId,Tags[?Key=='Name']|[0].Value,InstanceType,PublicIpAddress]" \
+        --output table
+}
+
+# Create EC2 instances
+if [ "$ACTION" == "create" ]; then
+    if [ -z "$VALUE" ]; then
         echo "Please provide number of instances to create."
         exit 1
     fi
-    COUNT=$INPUT
-    echo "Creating $COUNT EC2 instance(s)..."
-    for i in $(seq 1 $COUNT); do
-        INSTANCE_ID=$(aws ec2 run-instances \
-            --image-id ami-03f4878755434977f \
-            --count 1 \
+    echo "Creating $VALUE EC2 instance(s)..."
+    for i in $(seq 1 $VALUE); do
+        aws ec2 run-instances \
+            --image-id ami-0f58b397bc5c1f2e8 \
             --instance-type t2.micro \
-            --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=github-actions-ec2-$i}]" \
-            --query 'Instances[0].InstanceId' --output text)
-        echo "Created EC2 Instance: $INSTANCE_ID"
+            --count 1 \
+            --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=github-actions-ec2}]' \
+            --output json
     done
+    echo "EC2 instance(s) creation triggered."
 
-elif [[ "$ACTION" == "stop" ]]; then
+# Stop EC2 instances
+elif [ "$ACTION" == "stop" ]; then
     echo "Listing running EC2 instances..."
-    aws ec2 describe-instances \
-        --filters "Name=instance-state-name,Values=running" \
-        --query "Reservations[*].Instances[*].[InstanceId,Tags[?Key=='Name'].Value | [0]]" \
-        --output table
-
-    if [[ -z "$INPUT" ]]; then
-        echo "Please provide instance ID to stop."
+    list_running_instances
+    if [ -z "$VALUE" ]; then
+        echo "Provide Instance ID to stop via workflow input."
         exit 1
     fi
-    echo "Stopping EC2 instance $INPUT..."
-    aws ec2 stop-instances --instance-ids "$INPUT"
+    echo "Stopping EC2 instance: $VALUE"
+    aws ec2 stop-instances --instance-ids $VALUE --output json
+    echo "Stop request sent."
 
-elif [[ "$ACTION" == "terminate" ]]; then
-    echo "Listing running EC2 instances..."
+# Terminate EC2 instances
+elif [ "$ACTION" == "terminate" ]; then
+    echo "Listing all EC2 instances..."
     aws ec2 describe-instances \
-        --filters "Name=instance-state-name,Values=running,stopped" \
-        --query "Reservations[*].Instances[*].[InstanceId,Tags[?Key=='Name'].Value | [0]]" \
+        --query "Reservations[*].Instances[*].[InstanceId,State.Name,Tags[?Key=='Name']|[0].Value]" \
         --output table
-
-    if [[ -z "$INPUT" ]]; then
-        echo "Please provide instance ID to terminate."
+    if [ -z "$VALUE" ]; then
+        echo "Provide Instance ID to terminate via workflow input."
         exit 1
     fi
-    echo "Terminating EC2 instance $INPUT..."
-    aws ec2 terminate-instances --instance-ids "$INPUT"
+    echo "Terminating EC2 instance: $VALUE"
+    aws ec2 terminate-instances --instance-ids $VALUE --output json
+    echo "Terminate request sent."
 
 else
-    echo "Invalid action: $ACTION. Use create | stop | terminate."
+    echo "Invalid action. Choose: create | stop | terminate"
     exit 1
 fi
