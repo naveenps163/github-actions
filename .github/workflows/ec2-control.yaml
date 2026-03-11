@@ -1,4 +1,4 @@
-name: EC2 Control
+name: EC2 Control with Shell
 
 on:
   workflow_dispatch:
@@ -24,16 +24,9 @@ jobs:
   ec2-control:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: project
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -42,22 +35,28 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # Terraform init (required for create/destroy)
-      - name: Terraform Init
-        if: ${{ github.event.inputs.action == 'create' || github.event.inputs.action == 'terminate' }}
-        run: terraform init -reconfigure
-
-      # Create EC2
-      - name: Terraform Apply
-        if: ${{ github.event.inputs.action == 'create' }}
-        run: terraform apply -auto-approve -var="instance_count=${{ github.event.inputs.instance_count }}"
-
-      # Stop EC2
-      - name: Stop EC2 Instance
-        if: ${{ github.event.inputs.action == 'stop' }}
-        run: aws ec2 stop-instances --instance-ids ${{ github.event.inputs.instance_id }}
-
-      # Terminate EC2
-      - name: Terminate EC2 Instance
-        if: ${{ github.event.inputs.action == 'terminate' }}
-        run: terraform destroy -auto-approve
+      - name: EC2 Control Script
+        run: |
+          ACTION="${{ github.event.inputs.action }}"
+          if [ "$ACTION" = "create" ]; then
+            COUNT="${{ github.event.inputs.instance_count }}"
+            echo "Creating $COUNT EC2 instance(s)..."
+            for i in $(seq 1 $COUNT); do
+              aws ec2 run-instances \
+                --image-id ami-03f4878755434977f \
+                --count 1 \
+                --instance-type t2.micro \
+                --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=github-actions-ec2-$i}]"
+            done
+          elif [ "$ACTION" = "stop" ]; then
+            INSTANCE_ID="${{ github.event.inputs.instance_id }}"
+            echo "Stopping EC2 instance $INSTANCE_ID..."
+            aws ec2 stop-instances --instance-ids "$INSTANCE_ID"
+          elif [ "$ACTION" = "terminate" ]; then
+            INSTANCE_ID="${{ github.event.inputs.instance_id }}"
+            echo "Terminating EC2 instance $INSTANCE_ID..."
+            aws ec2 terminate-instances --instance-ids "$INSTANCE_ID"
+          else
+            echo "Invalid action!"
+            exit 1
+          fi
