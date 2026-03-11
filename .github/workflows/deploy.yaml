@@ -23,11 +23,7 @@ steps:
       echo "AWS_DEFAULT_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
 
   - name: Terraform Init
-    run: terraform init
-    working-directory: project
-
-  - name: Terraform Plan Destroy
-    run: terraform plan -destroy
+    run: terraform init -reconfigure
     working-directory: project
 
   - name: Terraform Destroy
