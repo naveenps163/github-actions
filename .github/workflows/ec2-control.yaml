@@ -11,11 +11,8 @@ on:
           - create
           - stop
           - terminate
-      instance_count:
-        description: 'Number of EC2s to create (only for create)'
-        required: false
-      instance_id:
-        description: 'EC2 Instance ID (for stop/terminate)'
+      input_value:
+        description: 'Number of instances (create) or Instance ID (stop/terminate)'
         required: false
 
 jobs:
@@ -23,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
@@ -33,46 +30,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: EC2 Operations
-        shell: bash
+      - name: Run EC2 Management Script
         run: |
-          ACTION="${{ github.event.inputs.action }}"
-
-          if [[ "$ACTION" == "create" ]]; then
-            COUNT="${{ github.event.inputs.instance_count }}"
-            if [[ -z "$COUNT" ]]; then
-              echo "Please provide instance_count input"
-              exit 1
-            fi
-            echo "Creating $COUNT EC2 instance(s)..."
-            for i in $(seq 1 $COUNT); do
-              aws ec2 run-instances \
-                --image-id ami-03f4878755434977f \
-                --count 1 \
-                --instance-type t2.micro \
-                --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=github-actions-ec2-$i}]" \
-                --query 'Instances[0].InstanceId' --output text
-            done
-
-          elif [[ "$ACTION" == "stop" ]]; then
-            INSTANCE_ID="${{ github.event.inputs.instance_id }}"
-            if [[ -z "$INSTANCE_ID" ]]; then
-              echo "Please provide instance_id input"
-              exit 1
-            fi
-            echo "Stopping EC2 instance $INSTANCE_ID..."
-            aws ec2 stop-instances --instance-ids "$INSTANCE_ID"
-
-          elif [[ "$ACTION" == "terminate" ]]; then
-            INSTANCE_ID="${{ github.event.inputs.instance_id }}"
-            if [[ -z "$INSTANCE_ID" ]]; then
-              echo "Please provide instance_id input"
-              exit 1
-            fi
-            echo "Terminating EC2 instance $INSTANCE_ID..."
-            aws ec2 terminate-instances --instance-ids "$INSTANCE_ID"
-
-          else
-            echo "Invalid action: $ACTION"
-            exit 1
-          fi
+          bash scripts/manage-ec2.sh "${{ github.event.inputs.action }}" "${{ github.event.inputs.input_value }}"
