@@ -1,0 +1,60 @@
+name: EC2 Control
+
+on:
+workflow_dispatch:
+inputs:
+action:
+description: "Choose action"
+required: true
+type: choice
+options:
+- create
+- stop
+- terminate
+
+```
+  instance_count:
+    description: "Number of EC2 instances (for create)"
+    required: false
+
+  instance_id:
+    description: "Instance ID (for stop or terminate)"
+    required: false
+```
+
+jobs:
+ec2-control:
+runs-on: ubuntu-latest
+
+```
+steps:
+  - name: Checkout
+    uses: actions/checkout@v4
+
+  - name: Setup Terraform
+    uses: hashicorp/setup-terraform@v3
+
+  - name: Configure AWS Credentials
+    uses: aws-actions/configure-aws-credentials@v4
+    with:
+      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      aws-region: ap-south-1
+
+  - name: Create EC2 Instances
+    if: ${{ github.event.inputs.action == 'create' }}
+    run: |
+      terraform init -reconfigure
+      terraform apply -auto-approve -var="instance_count=${{ github.event.inputs.instance_count }}"
+    working-directory: project
+
+  - name: Stop EC2 Instance
+    if: ${{ github.event.inputs.action == 'stop' }}
+    run: |
+      aws ec2 stop-instances --instance-ids ${{ github.event.inputs.instance_id }}
+
+  - name: Terminate EC2 Instance
+    if: ${{ github.event.inputs.action == 'terminate' }}
+    run: |
+      aws ec2 terminate-instances --instance-ids ${{ github.event.inputs.instance_id }}
+```
