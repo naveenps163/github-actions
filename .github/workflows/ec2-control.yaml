@@ -8,11 +8,11 @@ on:
         required: true
         default: "create"
       input_value:
-        description: "Number of instances (create) or Instance ID(s) (stop/terminate, comma separated)"
+        description: "Number of instances (create) or Instance IDs (stop/terminate, comma separated)"
         required: false
 
 jobs:
-  manage-ec2:
+  ec2-control:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,5 +30,4 @@ jobs:
         run: chmod +x scripts/manage-ec2.sh
 
       - name: Run EC2 Management Script
-        run: |
-          bash scripts/manage-ec2.sh "${{ github.event.inputs.action }}" "${{ github.event.inputs.input_value }}"
+        run: bash scripts/manage-ec2.sh "${{ github.event.inputs.action }}" "${{ github.event.inputs.input_value }}"
