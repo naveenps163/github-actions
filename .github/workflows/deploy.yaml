@@ -1,36 +1,36 @@
-name: Terraform Deploy
+name: Terraform Destroy EC2
 
 on:
-  push:
-    branches:
-      - main
+workflow_dispatch:
 
 jobs:
-  terraform:
-    runs-on: ubuntu-latest
+terraform:
+runs-on: ubuntu-latest
 
-    steps:
+```
+steps:
 
-      - name: Checkout Code
-        uses: actions/checkout@v4
+  - name: Checkout Code
+    uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+  - name: Setup Terraform
+    uses: hashicorp/setup-terraform@v3
 
-      - name: Configure AWS Credentials
-        run: |
-          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
-          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
-          echo "AWS_DEFAULT_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
+  - name: Configure AWS Credentials
+    run: |
+      echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+      echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
+      echo "AWS_DEFAULT_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
 
-      - name: Terraform Init
-        run: terraform init
-        working-directory: project
+  - name: Terraform Init
+    run: terraform init
+    working-directory: project
 
-      - name: Terraform Plan
-        run: terraform plan
-        working-directory: project
+  - name: Terraform Plan Destroy
+    run: terraform plan -destroy
+    working-directory: project
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
-        working-directory: project
+  - name: Terraform Destroy
+    run: terraform destroy -auto-approve
+    working-directory: project
+```
