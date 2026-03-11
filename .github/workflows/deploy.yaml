@@ -11,7 +11,7 @@ jobs:
 
     steps:
 
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Terraform
@@ -25,9 +25,12 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+        working-directory: project
 
       - name: Terraform Plan
         run: terraform plan
+        working-directory: project
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
+        working-directory: project
